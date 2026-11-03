@@ -29,6 +29,9 @@ export const groupsAPI = {
   updateGroupSettings(groupId, username, name, groupRules) {
     return request(`${API_BASE}/${groupId}/settings`, { method: 'PATCH', body: JSON.stringify({ username, name, groupRules }) });
   },
+  deleteGroup(groupId, username) {
+    return request(`${API_BASE}/${groupId}`, { method: 'DELETE', body: JSON.stringify({ username }) });
+  },
   getPredictions(groupId) {
     return request(`${API_BASE}/${groupId}/predictions`);
   },

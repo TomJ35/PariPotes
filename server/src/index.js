@@ -15,6 +15,7 @@ app.use(express.json());
 fs.mkdirSync(dataDirectory, { recursive: true });
 const db = new Database(databaseFile);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 db.exec(`
   CREATE TABLE IF NOT EXISTS groups (
     id INTEGER PRIMARY KEY,
@@ -28,7 +29,8 @@ db.exec(`
     username TEXT PRIMARY KEY,
     group_id INTEGER NOT NULL REFERENCES groups(id),
     points INTEGER NOT NULL,
-    joined_at TEXT NOT NULL
+    joined_at TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1
   );
   CREATE TABLE IF NOT EXISTS predictions (
     id INTEGER PRIMARY KEY,
@@ -55,6 +57,9 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 `);
+if (!db.prepare('PRAGMA table_info(memberships)').all().some(column => column.name === 'active')) {
+  db.exec('ALTER TABLE memberships ADD COLUMN active INTEGER NOT NULL DEFAULT 1');
+}
 
 function readJson(value, fallback) {
   if (!value) return fallback;
@@ -64,7 +69,7 @@ function readJson(value, fallback) {
 function readGroupsData() {
   return {
     groups: db.prepare('SELECT id, name, invite_code AS inviteCode, creator_username AS creatorUsername, rules, created_at AS createdAt FROM groups').all().map(group => ({ ...group, rules: readJson(group.rules, {}) })),
-    memberships: db.prepare('SELECT username, group_id AS groupId, points, joined_at AS joinedAt FROM memberships').all(),
+    memberships: db.prepare('SELECT username, group_id AS groupId, points, joined_at AS joinedAt, active FROM memberships').all().map(membership => ({ ...membership, active: Boolean(membership.active) })),
     predictions: db.prepare('SELECT id, group_id AS groupId, creator_username AS creatorUsername, type, question, options, status, created_at AS createdAt, pending_result AS pendingResult, result_option_id AS resultOptionId, result_value AS resultValue, result_ranking AS resultRanking FROM predictions').all().map(prediction => ({ ...prediction, options: readJson(prediction.options, []), pendingResult: readJson(prediction.pendingResult, null), resultRanking: readJson(prediction.resultRanking, undefined) })),
     wagers: db.prepare('SELECT id, prediction_id AS predictionId, username, option_id AS optionId, value, ranking, amount, created_at AS createdAt FROM wagers').all().map(wager => ({ ...wager, ranking: readJson(wager.ranking, undefined) })),
   };
@@ -76,11 +81,11 @@ const writeGroupsData = db.transaction(data => {
   db.prepare('DELETE FROM memberships').run();
   db.prepare('DELETE FROM groups').run();
   const insertGroup = db.prepare('INSERT INTO groups (id, name, invite_code, creator_username, rules, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-  const insertMembership = db.prepare('INSERT INTO memberships (username, group_id, points, joined_at) VALUES (?, ?, ?, ?)');
+  const insertMembership = db.prepare('INSERT INTO memberships (username, group_id, points, joined_at, active) VALUES (?, ?, ?, ?, ?)');
   const insertPrediction = db.prepare('INSERT INTO predictions (id, group_id, creator_username, type, question, options, status, created_at, pending_result, result_option_id, result_value, result_ranking) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const insertWager = db.prepare('INSERT INTO wagers (id, prediction_id, username, option_id, value, ranking, amount, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
   for (const group of data.groups || []) insertGroup.run(group.id, group.name, group.inviteCode, group.creatorUsername, JSON.stringify(group.rules || {}), group.createdAt);
-  for (const membership of data.memberships || []) insertMembership.run(membership.username, membership.groupId, membership.points, membership.joinedAt);
+  for (const membership of data.memberships || []) insertMembership.run(membership.username, membership.groupId, membership.points, membership.joinedAt, membership.active === false ? 0 : 1);
   for (const prediction of data.predictions || []) insertPrediction.run(prediction.id, prediction.groupId, prediction.creatorUsername, prediction.type, prediction.question, JSON.stringify(prediction.options || []), prediction.status, prediction.createdAt, prediction.pendingResult ? JSON.stringify(prediction.pendingResult) : null, prediction.resultOptionId || null, prediction.resultValue ?? null, prediction.resultRanking ? JSON.stringify(prediction.resultRanking) : null);
   for (const wager of data.wagers || []) insertWager.run(wager.id, wager.predictionId, wager.username, wager.optionId || null, wager.value ?? null, wager.ranking ? JSON.stringify(wager.ranking) : null, wager.amount, wager.createdAt);
 });
@@ -103,7 +108,7 @@ app.get('/api/health', (req, res) => {
 
 app.get('/api/groups/user/:username', (req, res) => {
   const data = readGroupsData();
-  const membership = data.memberships.find(item => item.username.toLowerCase() === req.params.username.toLowerCase());
+  const membership = data.memberships.find(item => item.active !== false && item.username.toLowerCase() === req.params.username.toLowerCase());
   if (!membership) return res.json(null);
   const group = data.groups.find(item => item.id === membership.groupId);
   res.json(group ? { group: { ...group, rules: getGroupRules(group) }, membership } : null);
@@ -112,7 +117,7 @@ app.get('/api/groups/user/:username', (req, res) => {
 app.get('/api/groups/:groupId/members', (req, res) => {
   const data = readGroupsData();
   const members = data.memberships
-    .filter(item => String(item.groupId) === String(req.params.groupId))
+    .filter(item => item.active !== false && String(item.groupId) === String(req.params.groupId))
     .sort((a, b) => b.points - a.points);
   res.json(members);
 });
@@ -146,7 +151,7 @@ app.post('/api/groups', (req, res) => {
 
   const group = { id: Date.now(), name: name.trim(), inviteCode, creatorUsername, rules: { ...rules }, createdAt: new Date().toISOString() };
   data.groups.push(group);
-  data.memberships.push({ username: creatorUsername, groupId: group.id, points: 1000, joinedAt: new Date().toISOString() });
+  data.memberships.push({ username: creatorUsername, groupId: group.id, points: 1000, joinedAt: new Date().toISOString(), active: true });
   writeGroupsData(data);
   res.status(201).json({ success: true, group });
 });
@@ -157,10 +162,19 @@ app.post('/api/groups/join', (req, res) => {
   const normalizedCode = String(inviteCode || '').toUpperCase().replace(/-/g, '').replace(/\s/g, '');
   const group = data.groups.find(item => item.inviteCode.toUpperCase().replace(/-/g, '') === normalizedCode);
   if (!group) return res.status(404).json({ success: false, error: "Aucun groupe ne correspond à ce code" });
-  if (data.memberships.some(item => item.username.toLowerCase() === String(username).toLowerCase())) {
+  const existingMembership = data.memberships.find(item => item.username.toLowerCase() === String(username).toLowerCase());
+  if (existingMembership && existingMembership.active !== false) {
     return res.status(409).json({ success: false, error: 'Tu appartiens déjà à un groupe' });
   }
-  data.memberships.push({ username, groupId: group.id, points: 1000, joinedAt: new Date().toISOString() });
+  if (existingMembership) {
+    const previousGroupId = existingMembership.groupId;
+    existingMembership.groupId = group.id;
+    existingMembership.points = previousGroupId === group.id ? existingMembership.points : 1000;
+    existingMembership.joinedAt = new Date().toISOString();
+    existingMembership.active = true;
+  } else {
+    data.memberships.push({ username, groupId: group.id, points: 1000, joinedAt: new Date().toISOString(), active: true });
+  }
   writeGroupsData(data);
   res.json({ success: true, group });
 });
@@ -172,7 +186,7 @@ app.post('/api/predictions', (req, res) => {
     return res.status(400).json({ error: 'La prédiction est incomplète' });
   }
   const data = readGroupsData();
-  const isMember = data.memberships.some(item => String(item.groupId) === String(groupId) && item.username.toLowerCase() === creatorUsername.toLowerCase());
+  const isMember = data.memberships.some(item => item.active !== false && String(item.groupId) === String(groupId) && item.username.toLowerCase() === creatorUsername.toLowerCase());
   if (!isMember) return res.status(403).json({ error: 'Tu ne fais pas partie de ce groupe' });
   const group = data.groups.find(item => String(item.id) === String(groupId));
   if (getGroupRules(group).who_can_create_bets === 'admin' && group.creatorUsername.toLowerCase() !== creatorUsername.toLowerCase()) return res.status(403).json({ error: 'Seul l’administrateur peut créer une prédiction' });
@@ -192,7 +206,7 @@ app.post('/api/predictions/:predictionId/wagers', (req, res) => {
   const numericAmount = Number(amount);
   const data = readGroupsData();
   const prediction = (data.predictions || []).find(item => String(item.id) === String(req.params.predictionId));
-  const membership = data.memberships.find(item => String(item.groupId) === String(prediction?.groupId) && item.username.toLowerCase() === String(username).toLowerCase());
+  const membership = data.memberships.find(item => item.active !== false && String(item.groupId) === String(prediction?.groupId) && item.username.toLowerCase() === String(username).toLowerCase());
   if (!prediction || prediction.status !== 'open') return res.status(400).json({ error: 'Cette prédiction n’est plus ouverte' });
   if (!membership) return res.status(403).json({ error: 'Tu ne fais pas partie de ce groupe' });
   if (prediction.type === 'exact_value') {
@@ -218,7 +232,7 @@ app.delete('/api/predictions/:predictionId', (req, res) => {
   if (!prediction) return res.status(404).json({ error: 'Prédiction introuvable' });
   if (prediction.creatorUsername.toLowerCase() !== String(req.body.username).toLowerCase()) return res.status(403).json({ error: 'Seul le créateur peut supprimer cette prédiction' });
   for (const wager of (data.wagers || []).filter(item => item.predictionId === prediction.id)) {
-    const membership = data.memberships.find(item => item.groupId === prediction.groupId && item.username.toLowerCase() === wager.username.toLowerCase());
+    const membership = data.memberships.find(item => item.active !== false && item.groupId === prediction.groupId && item.username.toLowerCase() === wager.username.toLowerCase());
     if (membership) membership.points += wager.amount;
   }
   data.predictions = data.predictions.filter(item => item.id !== prediction.id);
@@ -264,7 +278,7 @@ app.post('/api/predictions/:predictionId/settle', (req, res) => {
   }
   const winningPool = winningWagers.reduce((sum, wager) => sum + wager.amount, 0);
   for (const wager of winningWagers) {
-    const membership = data.memberships.find(item => item.groupId === prediction.groupId && item.username.toLowerCase() === wager.username.toLowerCase());
+    const membership = data.memberships.find(item => item.active !== false && item.groupId === prediction.groupId && item.username.toLowerCase() === wager.username.toLowerCase());
     if (membership) membership.points += winningPool ? Math.floor(totalPool * wager.amount / winningPool) : wager.amount;
   }
   prediction.status = 'settled';
@@ -288,6 +302,21 @@ app.patch('/api/groups/:groupId/settings', (req, res) => {
   res.json({ success: true, group: { ...group, rules: getGroupRules(group) } });
 });
 
+app.delete('/api/groups/:groupId', (req, res) => {
+  const { username } = req.body;
+  const data = readGroupsData();
+  const group = data.groups.find(item => String(item.id) === String(req.params.groupId));
+  if (!group) return res.status(404).json({ error: 'Groupe introuvable' });
+  if (group.creatorUsername.toLowerCase() !== String(username).toLowerCase()) return res.status(403).json({ error: 'Seul l’administrateur peut supprimer le groupe' });
+  const predictionIds = new Set((data.predictions || []).filter(item => item.groupId === group.id).map(item => item.id));
+  data.groups = data.groups.filter(item => item.id !== group.id);
+  data.memberships = data.memberships.filter(item => item.groupId !== group.id);
+  data.predictions = (data.predictions || []).filter(item => item.groupId !== group.id);
+  data.wagers = (data.wagers || []).filter(item => !predictionIds.has(item.predictionId));
+  writeGroupsData(data);
+  res.status(204).end();
+});
+
 app.delete('/api/groups/membership/:username', (req, res) => {
   const data = readGroupsData();
   const username = req.params.username;
@@ -296,11 +325,11 @@ app.delete('/api/groups/membership/:username', (req, res) => {
   const group = data.groups.find(item => item.id === membership.groupId);
   const nextAdmin = req.body?.nextAdminUsername;
   if (group?.creatorUsername.toLowerCase() === username.toLowerCase()) {
-    const successor = data.memberships.find(item => item.groupId === group.id && item.username.toLowerCase() === String(nextAdmin || '').toLowerCase() && item.username.toLowerCase() !== username.toLowerCase());
+    const successor = data.memberships.find(item => item.active !== false && item.groupId === group.id && item.username.toLowerCase() === String(nextAdmin || '').toLowerCase() && item.username.toLowerCase() !== username.toLowerCase());
     if (!successor) return res.status(400).json({ error: 'L’administrateur doit choisir un membre pour transférer ses droits' });
     group.creatorUsername = successor.username;
   }
-  data.memberships = data.memberships.filter(item => item.username.toLowerCase() !== username.toLowerCase());
+  membership.active = false;
   writeGroupsData(data);
   res.status(204).end();
 });

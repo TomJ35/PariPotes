@@ -28,6 +28,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   padding: env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom));
+  min-height: 100vh;
 }
 
 button, input, select {
@@ -41,7 +42,7 @@ button, input, select {
 }
 
 #root {
-  min-height: 100vh;
+  min-height: 0;
 }
 
 .wrap {
@@ -141,7 +142,7 @@ nav button[aria-current="page"] {
 
 @media (min-width: 768px) {
   body {
-    padding-bottom: 40px;
+    padding-bottom: 24px;
   }
 
   nav {
@@ -176,6 +177,16 @@ nav button[aria-current="page"] {
   .coin {
     order: 3;
   }
+
+  .wrap { padding-left: 28px; padding-right: 28px; }
+  main { max-width: 920px; margin: 0 auto; }
+  .predictions-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .prediction-card { height: 100%; }
+}
+
+@media (min-width: 1200px) {
+  .wrap { max-width: 1280px; }
+  header { padding-top: 28px; }
 }
 
 /* Typography */
@@ -281,8 +292,10 @@ button:disabled {
 
 .home-heading .lead { margin: 0; }
 .predictions-list { display: grid; gap: 18px; }
-.prediction-card { background: var(--card); border: var(--bw) solid var(--ink); border-radius: 6px 22px 6px 22px; box-shadow: var(--shadow); padding: 18px; }
+.prediction-card { position: relative; overflow: hidden; background: var(--card); border: var(--bw) solid var(--ink); border-radius: 6px 22px 6px 22px; box-shadow: var(--shadow); padding: 18px; }
 .prediction-card:nth-child(even) { border-radius: 22px 6px 22px 6px; }
+.prediction-ribbon { position: absolute; top: 14px; right: -34px; padding: 4px 34px; background: #35A853; color: #fff; border: 2px solid var(--ink); font-size: 11px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; transform: rotate(35deg); }
+.prediction-card.settled { border-color: #35A853; }
 .prediction-card h2 { font: 400 22px/1.2 var(--display); margin: 10px 0 16px; }
 .prediction-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; font-weight: 700; }
 .prediction-options { display: grid; gap: 8px; }
@@ -358,7 +371,6 @@ ol.rank li {
   align-items: center;
   gap: 12px;
   border: 0;
-  border-bottom: 2px solid #e6d47d;
   border-radius: 10px;
   padding: 12px 14px;
   background: var(--yellow);
@@ -390,3 +402,4 @@ ol.rank li.me {
 .group-settings-panel code { padding: 8px 10px; border: 2px solid var(--ink); border-radius: 8px; background: var(--yellow); letter-spacing: 2px; }
 .checkbox-field { flex-direction: row; align-items: center; }
 .checkbox-field input { width: 20px; height: 20px; }
+.settings-divider { width: 100%; border: 0; border-top: 2px solid var(--ink); margin: 4px 0; }

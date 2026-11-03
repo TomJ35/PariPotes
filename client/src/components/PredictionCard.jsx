@@ -47,7 +47,8 @@ function PredictionCard({ prediction, currentUser, balance, onChanged }) {
     </div>)}
   </div>;
 
-  return <article className="prediction-card">
+  return <article className={`prediction-card${prediction.status === 'settled' ? ' settled' : ''}`}>
+    {prediction.status === 'settled' && <span className="prediction-ribbon">Terminée</span>}
     <div className="prediction-meta"><span>{prediction.type === 'yesno' ? 'OUI / NON' : prediction.type === 'multiple' ? 'CHOIX MULTIPLE' : prediction.type === 'exact_value' ? 'VALEUR EXACTE' : 'CLASSEMENT'}</span><span>{new Date(prediction.createdAt).toLocaleString('fr-FR')}</span></div>
     <h2>{prediction.question}</h2>
     {prediction.type === 'exact_value' ? <input className="prediction-value" type="number" value={value} onChange={event => setValue(event.target.value)} placeholder="Ta valeur" disabled={Boolean(myWager) || prediction.status !== 'open'} /> : prediction.type === 'ranking' ? renderRankingPicker(ranking, setRanking, Boolean(myWager) || prediction.status !== 'open') : <div className="prediction-options">{prediction.options.map(option => <button key={option.id} type="button" className={selected === option.id ? 'prediction-option selected' : 'prediction-option'} onClick={() => setSelected(option.id)} disabled={Boolean(myWager) || prediction.status !== 'open'}><span>{option.label}</span><small>×{option.pool ? (total / option.pool).toFixed(1) : '—'} · {total ? Math.round(option.pool / total * 100) : 0} %</small></button>)}</div>}

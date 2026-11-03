@@ -191,7 +191,7 @@ function App() {
     }
 
     if (currentView === 'group-settings') {
-      return <GroupSettingsPage group={userGroup.group} currentUser={currentUser} onBack={() => setCurrentView('group')} onSaved={() => { refreshGroupData(); setCurrentView('group'); }} />;
+      return <GroupSettingsPage group={userGroup.group} currentUser={currentUser} onBack={() => setCurrentView('group')} onSaved={() => { refreshGroupData(); setCurrentView('group'); }} onDeleted={() => { setUserGroup(null); setPredictions([]); setBalance(1000); setCurrentView('home'); }} />;
     }
 
     if (currentView === 'create') {

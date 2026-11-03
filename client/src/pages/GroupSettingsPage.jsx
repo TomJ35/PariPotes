@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { groupsAPI } from '../api/groups';
 
-function GroupSettingsPage({ group, currentUser, onBack, onSaved }) {
+function GroupSettingsPage({ group, currentUser, onBack, onSaved, onDeleted }) {
   const isAdmin = group.creatorUsername?.toLowerCase() === currentUser.username.toLowerCase();
   const [name, setName] = useState(group.name);
   const [groupRules, setGroupRules] = useState(group.rules || {});
@@ -16,6 +16,14 @@ function GroupSettingsPage({ group, currentUser, onBack, onSaved }) {
       await groupsAPI.updateGroupSettings(group.id, currentUser.username, name, { ...groupRules, min_bet: Number(groupRules.min_bet), max_bet_percent_of_balance: Number(groupRules.max_bet_percent_of_balance), house_fee_percent: Number(groupRules.house_fee_percent), betting_closes_before_event_minutes: Number(groupRules.betting_closes_before_event_minutes) });
       setMessage('Paramètres enregistrés.');
       onSaved();
+    } catch (err) { setMessage(err.message); }
+  };
+
+  const deleteGroup = async () => {
+    if (!window.confirm(`Supprimer définitivement le groupe « ${group.name} » et toutes ses prédictions ?`)) return;
+    try {
+      await groupsAPI.deleteGroup(group.id, currentUser.username);
+      onDeleted();
     } catch (err) { setMessage(err.message); }
   };
 
@@ -34,6 +42,8 @@ function GroupSettingsPage({ group, currentUser, onBack, onSaved }) {
       {message && <p className="msg">{message}</p>}
       <button className="btn" type="submit">Enregistrer les paramètres</button>
       <button className="btn ghost" type="button" onClick={onBack}>Retour au groupe</button>
+      <hr className="settings-divider" />
+      <button className="btn danger" type="button" onClick={deleteGroup}>Supprimer définitivement le groupe</button>
     </form>
   </main>;
 }

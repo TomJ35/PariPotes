@@ -216,16 +216,16 @@ Statuts d'un pari : `open` → `closed` → `settled` (ou `cancelled`).
 ## 🗺️ Feuille de route
 
 ### V1 : MVP
-- [ ] Création d'un compte
-- [ ] Création / rejoindre un groupe via code
-- [ ] Création de paris (3 types)
-- [ ] Mises et cotes dynamiques
-- [ ] Résolution des paris et distribution des gains
-- [ ] Classement du groupe
-- [ ] Interface responsive complète
+- [X] Création d'un compte
+- [X] Création / rejoindre un groupe via code
+- [X] Création de paris (3 types)
+- [X] Mises et cotes dynamiques
+- [X] Résolution des paris et distribution des gains
+- [X] Classement du groupe
+- [X] Interface responsive complète
 
 ### V2 : idées
-- [ ] Règles modifiables par groupe depuis l'interface
+- [X] Règles modifiables par groupe depuis l'interface
 - [ ] Commentaires sur les paris
 - [ ] Badges et statistiques (meilleur pronostiqueur, série de victoires)
 

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PariPotes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Sans:wght@500;700&display=swap">
+<style>
+:root{
+  --bg:#FFF6E8; --ink:#141413; --muted:#4A4A4A; --card:#FFFFFF;
+  --tomato:#FF5A36; --blue:#2E5BFF; --yellow:#FFD23F;
+  --bw:3px; --shadow:4px 4px 0 var(--ink);
+  --display:'Archivo Black',Impact,sans-serif; --body:'DM Sans',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.4 var(--body);
+  padding:env(safe-area-inset-top) 0 calc(88px + env(safe-area-inset-bottom))}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+
+/* Header */
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 0 8px}
+.logo{font:400 24px var(--display);background:var(--yellow);border:var(--bw) solid var(--ink);
+  padding:4px 12px;transform:rotate(-3deg);box-shadow:3px 3px 0 var(--ink)}
+.coin{width:84px;height:84px;border-radius:50%;background:var(--blue);color:#fff;border:var(--bw) solid var(--ink);
+  transform:rotate(6deg);box-shadow:3px 3px 0 var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.coin strong{font:400 22px/1 var(--display)} .coin span{font-size:12px;font-weight:700}
+
+/* Navigation: bottom bar on mobile, inline on larger screens */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;display:flex;background:var(--yellow);
+  border-top:var(--bw) solid var(--ink);padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+nav button{flex:1;min-height:56px;background:none;border:0;border-radius:12px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-weight:700}
+nav button[aria-current="page"]{background:var(--card);box-shadow:inset 0 0 0 var(--bw) var(--ink)}
+nav svg{width:24px;height:24px;fill:none;stroke:var(--ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+@media (min-width:768px){
+  body{padding-bottom:40px}
+  nav{position:static;order:2;flex:1;max-width:460px;background:none;border:0;padding:0;gap:8px}
+  nav button{flex-direction:row;gap:8px;min-height:48px;font-size:15px;border:var(--bw) solid transparent}
+  nav button[aria-current="page"]{box-shadow:none;border-color:var(--ink);background:var(--yellow)}
+  .logo{order:1} .coin{order:3}
+}
+
+/* Typography and layout */
+h1{font:400 clamp(28px,5vw,44px)/1 var(--display);margin:20px 0 4px}
+.lead{color:var(--muted);margin:0 0 20px}
+.grid{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:720px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1100px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+/* Bet card */
+.bet{background:var(--card);border:var(--bw) solid var(--ink);border-radius:6px 22px 6px 22px;
+  box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.bet:nth-child(even){border-radius:22px 6px 22px 6px}
+.meta{display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted)}
+.meta .tag{color:var(--blue)}
+.bet h2{font:400 20px/1.2 var(--display);margin:0}
+.options{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));
+  border-top:var(--bw) dashed var(--ink);padding-top:12px}
+.opt{min-height:60px;border:var(--bw) solid var(--ink);border-radius:12px;background:var(--card);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;padding:6px}
+.opt small{font-weight:500;color:var(--muted)}
+.opt[aria-pressed="true"]{background:var(--tomato)} .opt[aria-pressed="true"] small{color:var(--ink)}
+.opt:disabled{cursor:default}
+.stake{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stake input{width:96px;min-height:48px;border:var(--bw) solid var(--ink);border-radius:12px;padding:0 10px;background:#fff}
+.btn{min-height:48px;padding:0 18px;border:var(--bw) solid var(--ink);border-radius:12px;background:var(--yellow);
+  font:400 15px var(--display);cursor:pointer;box-shadow:3px 3px 0 var(--ink)}
+.btn.ghost{background:#fff;box-shadow:none;font:700 14px var(--body)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.msg{min-height:1.4em;font-size:14px;font-weight:700;margin:0}
+.msg.error{color:#B3261E}
+
+/* Create form and leaderboard */
+form.panel,.panel{background:var(--card);border:var(--bw) solid var(--ink);border-radius:12px;box-shadow:var(--shadow);
+  padding:20px;max-width:560px;display:flex;flex-direction:column;gap:14px}
+label{display:flex;flex-direction:column;gap:6px;font-weight:700}
+label input,label select{min-height:48px;border:var(--bw) solid var(--ink);border-radius:12px;padding:0 12px;background:#fff;font-weight:500}
+ol.rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+ol.rank li{display:flex;align-items:center;gap:12px;border:var(--bw) solid var(--ink);border-radius:12px;padding:10px 14px;background:#fff}
+ol.rank li.me{background:var(--yellow)}
+.pos{font:400 18px var(--display);width:28px} .pts{margin-left:auto;font-weight:700}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">PariPotes</div>
+    <nav id="nav" aria-label="Navigation principale"></nav>
+    <div class="coin" aria-live="polite"><strong id="balance">0</strong><span>points</span></div>
+  </header>
+  <main id="main"></main>
+</div>
+
+<script>
+// Game rules: edit these values to change how the game behaves.
+const RULES = { startingPoints: 1250, minBet: 10, maxBetPercentOfBalance: 50, houseFeePercent: 0 };
+
+const state = {
+  view: 'bets',
+  balance: RULES.startingPoints,
+  selected: {},   // betId -> optionId
+  wagers: {},     // betId -> { optionId, amount }
+  friends: [{ name: 'Léa', points: 1480 }, { name: 'Hugo', points: 1190 }, { name: 'Sam', points: 940 }],
+  bets: [
+    { id: 1, type: 'yesno', question: 'Le prof de maths sera absent jeudi ?', closes: 'ferme dans 2 h',
+      options: [{ id: 'a', label: 'Oui', pool: 620 }, { id: 'b', label: 'Non', pool: 380 }] },
+    { id: 2, type: 'multi', question: 'Qui arrive en dernier au ciné ?', closes: 'ferme demain',
+      options: [{ id: 'a', label: 'Léa', pool: 150 }, { id: 'b', label: 'Hugo', pool: 320 }, { id: 'c', label: 'Sam', pool: 230 }] },
+    { id: 3, type: 'multi', question: 'Combien de minutes de retard pour Hugo ?', closes: 'ferme dans 5 h',
+      options: [{ id: 'a', label: '0 à 5', pool: 200 }, { id: 'b', label: '5 à 15', pool: 260 }, { id: 'c', label: '15 et +', pool: 90 }] },
+  ],
+};
+
+const TABS = [
+  ['bets', 'Paris', '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/>'],
+  ['create', 'Créer', '<path d="M12 5v14M5 12h14"/>'],
+  ['ranking', 'Classement', '<path d="M8 4h8v5a4 4 0 0 1-8 0V4zM12 13v4M8 20h8"/>'],
+];
+
+const fmt = (n, digits = 0) => n.toLocaleString('fr-FR', { maximumFractionDigits: digits });
+
+// Mutual betting: payout multiplier = (total pool after fee) / (pool on this option)
+function getOdds(bet, option) {
+  const total = bet.options.reduce((sum, o) => sum + o.pool, 0);
+  return (total * (1 - RULES.houseFeePercent / 100)) / option.pool;
+}
+const getShare = (bet, option) => option.pool / bet.options.reduce((sum, o) => sum + o.pool, 0);
+
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'class') node.className = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value);
+  }
+  node.append(...children);
+  return node;
+}
+
+function renderNav() {
+  const nav = document.getElementById('nav');
+  nav.replaceChildren(...TABS.map(([id, label, icon]) => {
+    const button = el('button', { type: 'button', onclick: () => { state.view = id; render(); } });
+    button.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>${label}`;
+    if (state.view === id) button.setAttribute('aria-current', 'page');
+    return button;
+  }));
+}
+
+function renderBet(bet) {
+  const wager = state.wagers[bet.id];
+  const selectedId = state.selected[bet.id];
+  const msg = el('p', { class: 'msg', 'aria-live': 'polite' });
+
+  const options = el('div', { class: 'options', role: 'group', 'aria-label': 'Choix possibles' },
+    ...bet.options.map((option) => {
+      const chosen = wager ? wager.optionId === option.id : selectedId === option.id;
+      const button = el('button', {
+        type: 'button', class: 'opt', 'aria-pressed': String(chosen),
+        onclick: () => { state.selected[bet.id] = option.id; render(); },
+      }, el('span', {}, option.label), el('small', {}, `×${fmt(getOdds(bet, option), 1)} · ${fmt(getShare(bet, option) * 100)} %`));
+      if (wager) button.disabled = true;
+      return button;
+    }));
+
+  let footer;
+  if (wager) {
+    const label = bet.options.find((o) => o.id === wager.optionId).label;
+    footer = el('p', { class: 'msg' }, `Ta mise : ${fmt(wager.amount)} pts sur « ${label} »`);
+  } else if (selectedId) {
+    const input = el('input', { type: 'number', min: RULES.minBet, step: 5, value: RULES.minBet, 'aria-label': 'Montant de la mise' });
+    const maxBet = Math.floor(state.balance * RULES.maxBetPercentOfBalance / 100);
+    const place = () => {
+      const amount = Math.floor(Number(input.value));
+      if (!(amount >= RULES.minBet)) { msg.className = 'msg error'; msg.textContent = `Mise minimale : ${RULES.minBet} pts.`; return; }
+      if (amount > maxBet) { msg.className = 'msg error'; msg.textContent = `Mise maximale : ${fmt(maxBet)} pts (${RULES.maxBetPercentOfBalance} % de ton solde).`; return; }
+      bet.options.find((o) => o.id === selectedId).pool += amount;
+      state.balance -= amount;
+      state.wagers[bet.id] = { optionId: selectedId, amount };
+      render();
+    };
+    footer = el('div', { class: 'stake' }, input,
+      el('button', { type: 'button', class: 'btn ghost', onclick: () => { input.value = maxBet; } }, 'Max'),
+      el('button', { type: 'button', class: 'btn', onclick: place }, 'Parier'));
+  }
+
+  return el('article', { class: 'bet' },
+    el('div', { class: 'meta' }, el('span', { class: 'tag' }, bet.type === 'yesno' ? 'OUI / NON' : 'CHOIX MULTIPLE'), el('span', {}, bet.closes)),
+    el('h2', {}, bet.question), options, ...(footer ? [footer] : []), msg);
+}
+
+function renderBets() {
+  return [
+    el('h1', {}, 'Paris en cours'),
+    el('p', { class: 'lead' }, 'Choisis une option, fixe ta mise, et croise les doigts.'),
+    el('div', { class: 'grid' }, ...state.bets.map(renderBet)),
+  ];
+}
+
+function renderCreate() {
+  const question = el('input', { type: 'text', required: '', maxlength: 90, placeholder: 'Ex. Le bus sera en retard ?' });
+  const type = el('select', {}, el('option', { value: 'yesno' }, 'Oui / Non'), el('option', { value: 'multi' }, 'Choix multiple'));
+  const choices = el('input', { type: 'text', placeholder: 'Ex. Léa, Hugo, Sam' });
+  const choicesLabel = el('label', { hidden: '' }, 'Choix (séparés par des virgules)', choices);
+  type.addEventListener('change', () => { choicesLabel.hidden = type.value === 'yesno'; });
+  const msg = el('p', { class: 'msg error', 'aria-live': 'polite' });
+
+  const form = el('form', { class: 'panel', onsubmit: (event) => {
+    event.preventDefault();
+    const labels = type.value === 'yesno' ? ['Oui', 'Non'] : choices.value.split(',').map((s) => s.trim()).filter(Boolean);
+    if (labels.length < 2) { msg.textContent = 'Ajoute au moins deux choix.'; return; }
+    state.bets.unshift({ id: Date.now(), type: type.value, question: question.value.trim(), closes: 'nouveau',
+      options: labels.map((label, i) => ({ id: String(i), label, pool: 50 })) });
+    state.view = 'bets';
+    render();
+  } },
+    el('label', {}, 'Question', question), el('label', {}, 'Type de pari', type), choicesLabel,
+    el('button', { type: 'submit', class: 'btn' }, 'Lancer le pari'), msg);
+  return [el('h1', {}, 'Créer un pari'), el('p', { class: 'lead' }, 'Une question, des choix, et tes potes n\'ont plus qu\'à miser.'), form];
+}
+
+function renderRanking() {
+  const players = [...state.friends, { name: 'Toi', points: state.balance, me: true }].sort((a, b) => b.points - a.points);
+  return [
+    el('h1', {}, 'Classement'),
+    el('p', { class: 'lead' }, 'Le groupe « La Team », par nombre de points.'),
+    el('div', { class: 'panel' }, el('ol', { class: 'rank' }, ...players.map((p, i) =>
+      el('li', { class: p.me ? 'me' : '' }, el('span', { class: 'pos' }, String(i + 1)), el('span', {}, p.name), el('span', { class: 'pts' }, `${fmt(p.points)} pts`))))),
+  ];
+}
+
+function render() {
+  document.getElementById('balance').textContent = fmt(state.balance);
+  renderNav();
+  const views = { bets: renderBets, create: renderCreate, ranking: renderRanking };
+  document.getElementById('main').replaceChildren(...views[state.view]());
+}
+render();
+</script>
+</body>
+</html>

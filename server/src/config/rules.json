@@ -1,0 +1,12 @@
+{
+  "starting_points": 1000,
+  "min_bet": 10,
+  "max_bet_percent_of_balance": 50,
+  "house_fee_percent": 0,
+  "daily_bonus": 50,
+  "bankruptcy_refill": 100,
+  "betting_closes_before_event_minutes": 0,
+  "who_can_create_bets": "everyone",
+  "who_can_settle_bets": "creator_or_admin",
+  "settlement_requires_confirmation": true
+}
